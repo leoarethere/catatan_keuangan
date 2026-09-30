@@ -1,6 +1,8 @@
 #include "my_application.h"
 
 #include <flutter_linux/flutter_linux.h>
+
+#include <string>
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
@@ -19,11 +21,30 @@ static void first_frame_cb(MyApplication* self, FlView* view) {
   gtk_widget_show(gtk_widget_get_toplevel(GTK_WIDGET(view)));
 }
 
+// Menampilkan ikon aplikasi (assets/icon/icon.webp) di jendela dan taskbar,
+// supaya tampilannya sama dengan platform lain. File ikon disalin ke bundle
+// oleh linux/CMakeLists.txt (data/app_icon.png).
+static void set_application_icon(GtkWindow* window) {
+  g_autofree gchar* executable_path =
+      g_file_read_link("/proc/self/exe", nullptr);
+  if (executable_path == nullptr) {
+    return;
+  }
+  g_autofree gchar* executable_dir = g_path_get_dirname(executable_path);
+  const std::string icon_path =
+      std::string(executable_dir) + "/data/app_icon.png";
+  if (g_file_test(icon_path.c_str(), G_FILE_TEST_EXISTS)) {
+    gtk_window_set_icon_from_file(window, icon_path.c_str(), nullptr);
+  }
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+
+  set_application_icon(window);
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
@@ -45,11 +66,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "flutter_project");
+    gtk_header_bar_set_title(header_bar, "CatetKeun");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "flutter_project");
+    gtk_window_set_title(window, "CatetKeun");
   }
 
   gtk_window_set_default_size(window, 1280, 720);

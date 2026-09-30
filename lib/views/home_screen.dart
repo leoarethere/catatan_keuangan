@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../models/transaction.dart';
 import '../providers/finance_provider.dart';
 import '../utils/date_helper.dart';
 import 'add_edit_transaction_screen.dart';
+import 'budget_screen.dart';
+import 'category_management_screen.dart';
 import 'statistics_screen.dart';
 import 'widgets/balance_card.dart';
 import 'widgets/empty_state.dart';
+import 'widgets/export_import_sheet.dart';
 import 'widgets/filter_bar.dart';
 import 'widgets/transaction_item_tile.dart';
+import 'about_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final FinanceProvider provider;
@@ -40,44 +45,95 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: _currentNavIndex == 0
-          ? _buildTransactionsTab(context)
-          : StatisticsScreen(provider: widget.provider),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentNavIndex,
-        onDestinationSelected: (idx) {
-          setState(() {
-            _currentNavIndex = idx;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded),
-            label: 'Transaksi',
+  void _showLanguageDialog(BuildContext context, AppLocalizations l10n) {
+    final provider = widget.provider;
+    final current = provider.locale.languageCode;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.languageSetting),
+        content: RadioGroup<String>(
+          groupValue: current,
+          onChanged: (v) {
+            provider.setLocale(v!);
+            Navigator.of(ctx).pop();
+          },
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(
+                value: 'id',
+                title: Text(l10n.languageNameId),
+              ),
+              RadioListTile<String>(
+                value: 'en',
+                title: Text(l10n.languageNameEn),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.pie_chart_outline_rounded),
-            selectedIcon: Icon(Icons.pie_chart_rounded),
-            label: 'Statistik',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l10n.close),
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return Scaffold(
+      body: _currentNavIndex == 0
+          ? _buildTransactionsTab(context, l10n)
+          : _currentNavIndex == 1
+              ? StatisticsScreen(provider: widget.provider)
+              : const AboutScreen(),
+      bottomNavigationBar: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Theme.of(context).colorScheme.surface,
+          currentIndex: _currentNavIndex,
+          onTap: (idx) => setState(() => _currentNavIndex = idx),
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.receipt_long_outlined),
+              activeIcon: const Icon(Icons.receipt_long_rounded),
+              label: l10n.navTransactions,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.pie_chart_outline_rounded),
+              activeIcon: const Icon(Icons.pie_chart_rounded),
+              label: l10n.navStatistics,
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.info_outline_rounded),
+              activeIcon: const Icon(Icons.info_rounded),
+              label: 'About',
+            ),
+          ],
+        ),
       ),
       floatingActionButton: _currentNavIndex == 0
           ? FloatingActionButton.extended(
               onPressed: () => _openAddTransaction(context),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Catat Transaksi'),
+              label: Text(l10n.addTransaction),
               elevation: 3,
             )
           : null,
     );
   }
 
-  Widget _buildTransactionsTab(BuildContext context) {
+  Widget _buildTransactionsTab(BuildContext context, AppLocalizations l10n) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -93,8 +149,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ? TextField(
                   controller: _searchController,
                   autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'Cari transaksi...',
+                  decoration: InputDecoration(
+                    hintText: l10n.searchHint,
                     border: InputBorder.none,
                   ),
                   onChanged: provider.setSearchQuery,
@@ -108,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      'Catatan Keuangan',
+                      l10n.appTitle,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         letterSpacing: -0.2,
@@ -119,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             IconButton(
               icon: Icon(_isSearching ? Icons.close_rounded : Icons.search_rounded),
-              tooltip: _isSearching ? 'Tutup Pencarian' : 'Cari Transaksi',
+              tooltip: _isSearching ? l10n.closeSearchTitle : l10n.searchTitle,
               onPressed: () {
                 setState(() {
                   if (_isSearching) {
@@ -132,12 +188,94 @@ class _HomeScreenState extends State<HomeScreen> {
                 });
               },
             ),
-            IconButton(
-              icon: Icon(
-                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-              ),
-              tooltip: isDark ? 'Mode Terang' : 'Mode Gelap',
-              onPressed: provider.toggleTheme,
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert_rounded),
+              tooltip: l10n.moreMenu,
+              onSelected: (value) {
+                switch (value) {
+                  case 'budget':
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => BudgetScreen(provider: provider),
+                      ),
+                    );
+                    break;
+                  case 'categories':
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CategoryManagementScreen(
+                          provider: provider,
+                        ),
+                      ),
+                    );
+                    break;
+                  case 'export_import':
+                    ExportImportSheet.show(context, provider);
+                    break;
+                  case 'theme':
+                    provider.toggleTheme();
+                    break;
+                  case 'language':
+                    _showLanguageDialog(context, l10n);
+                    break;
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'budget',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.savings_outlined),
+                      const SizedBox(width: 12),
+                      Text(l10n.manageBudgetMenu),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'categories',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.category_outlined),
+                      const SizedBox(width: 12),
+                      Text(l10n.manageCategoryMenu),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'export_import',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.import_export_rounded),
+                      const SizedBox(width: 12),
+                      Text(l10n.exportImportMenu),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'theme',
+                  child: Row(
+                    children: [
+                      Icon(
+                        isDark
+                            ? Icons.light_mode_outlined
+                            : Icons.dark_mode_outlined,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(isDark ? l10n.lightMode : l10n.darkMode),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'language',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.translate_outlined),
+                      const SizedBox(width: 12),
+                      Text(l10n.languageSetting),
+                    ],
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 8),
           ],
@@ -163,13 +301,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Riwayat Transaksi',
+                      l10n.transactionHistory,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      '${provider.filteredTransactions.length} transaksi',
+                      l10n.transactionCount(provider.filteredTransactions.length),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: colorScheme.outline,
                       ),
@@ -192,16 +330,18 @@ class _HomeScreenState extends State<HomeScreen> {
           SliverFillRemaining(
             hasScrollBody: false,
             child: EmptyState(
-              title: 'Belum Ada Transaksi',
+              title: l10n.emptyTransactionsTitle,
               message: provider.searchQuery.isNotEmpty
-                  ? 'Tidak ditemukan transaksi yang cocok dengan kata kunci "${provider.searchQuery}".'
-                  : 'Belum ada catatan keuangan pada periode ${DateHelper.formatMonthYear(provider.selectedMonth)}.',
-              actionLabel: 'Tambah Catatan Baru',
+                  ? l10n.emptySearchMessage(provider.searchQuery)
+                  : l10n.emptyPeriodMessage(
+                      DateHelper.formatMonthYear(provider.selectedMonth),
+                    ),
+              actionLabel: l10n.addNewRecord,
               onAction: () => _openAddTransaction(context),
             ),
           )
         else
-          _buildGroupedTransactionsSliver(context, provider),
+          _buildGroupedTransactionsSliver(context, provider, l10n),
 
         // Bottom space so FAB doesn't obscure the last item
         const SliverToBoxAdapter(
@@ -214,6 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildGroupedTransactionsSliver(
     BuildContext context,
     FinanceProvider provider,
+    AppLocalizations l10n,
   ) {
     final transactions = provider.filteredTransactions;
     final theme = Theme.of(context);
@@ -262,9 +403,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         provider.deleteTransaction(tx.id);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Catatan "${deletedTx.title}" dihapus'),
+                            content: Text(
+                              l10n.transactionDeleted(deletedTx.title),
+                            ),
                             action: SnackBarAction(
-                              label: 'Urungkan',
+                              label: l10n.undo,
                               onPressed: () {
                                 provider.addTransaction(deletedTx);
                               },

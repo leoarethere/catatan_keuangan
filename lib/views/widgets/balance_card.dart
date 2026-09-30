@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../providers/finance_provider.dart';
 import '../../utils/currency_helper.dart';
 
@@ -9,6 +10,7 @@ class BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
@@ -54,7 +56,7 @@ class BalanceCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Saldo Bulan Ini',
+                l10n.monthlyBalance,
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w500,
@@ -79,7 +81,9 @@ class BalanceCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Total: ${CurrencyHelper.format(provider.totalBalance)}',
+                      l10n.totalBalance(
+                        CurrencyHelper.format(provider.totalBalance),
+                      ),
                       style: theme.textTheme.labelSmall?.copyWith(
                         color: colorScheme.primary,
                         fontWeight: FontWeight.bold,
@@ -107,7 +111,7 @@ class BalanceCard extends StatelessWidget {
               Expanded(
                 child: _buildMetricTile(
                   context: context,
-                  label: 'Pemasukan',
+                  label: l10n.income,
                   amount: income,
                   isIncome: true,
                 ),
@@ -121,7 +125,7 @@ class BalanceCard extends StatelessWidget {
               Expanded(
                 child: _buildMetricTile(
                   context: context,
-                  label: 'Pengeluaran',
+                  label: l10n.expense,
                   amount: expense,
                   isIncome: false,
                 ),
@@ -136,7 +140,7 @@ class BalanceCard extends StatelessWidget {
   Widget _buildMetricTile({
     required BuildContext context,
     required String label,
-    required double amount,
+    required int amount,
     required bool isIncome,
   }) {
     final theme = Theme.of(context);

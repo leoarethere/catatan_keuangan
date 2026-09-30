@@ -1,57 +1,52 @@
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
+
+/// Helper tanggal yang sadar locale.
+///
+/// [locale] diubah oleh FinanceProvider.setLocale() ('id' / 'en').
+/// [todayLabel] & [yesterdayLabel] diisi dari AppLocalizations
+/// agar header grup transaksi ("Hari ini" / "Today") ikut berubah.
 class DateHelper {
-  static const List<String> monthNames = [
-    'Januari',
-    'Februari',
-    'Maret',
-    'April',
-    'Mei',
-    'Juni',
-    'Juli',
-    'Agustus',
-    'September',
-    'Oktober',
-    'November',
-    'Desember',
-  ];
+  static String locale = 'id';
+  static String todayLabel = 'Hari ini';
+  static String yesterdayLabel = 'Kemarin';
 
-  static const List<String> shortMonthNames = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'Mei',
-    'Jun',
-    'Jul',
-    'Agu',
-    'Sep',
-    'Okt',
-    'Nov',
-    'Des',
-  ];
+  static bool _dateSymbolsReady = false;
 
-  static const List<String> dayNames = [
-    'Senin',
-    'Selasa',
-    'Rabu',
-    'Kamis',
-    'Jumat',
-    'Sabtu',
-    'Minggu',
-  ];
+  /// Pastikan simbol tanggal (nama bulan/hari) sudah dimuat untuk
+  /// semua locale yang didukung. Panggil sekali saat app start.
+  static Future<void> ensureInitialized() async {
+    if (_dateSymbolsReady) return;
+    await initializeDateFormatting('id');
+    await initializeDateFormatting('en');
+    _dateSymbolsReady = true;
+  }
+
+  /// Nama bulan panjang per index (0 = Januari/January).
+  static List<String> get monthNames =>
+      List<String>.of(DateFormat.EEEE(locale).dateSymbols.MONTHS);
+
+  /// Nama bulan pendek per index (0 = Jan/Jan).
+  static List<String> get shortMonthNames =>
+      List<String>.of(DateFormat.EEEE(locale).dateSymbols.SHORTMONTHS);
+
+  /// Nama hari per index (0 = Senin/Monday ... 6 = Minggu/Sunday).
+  /// CLDR menyimpan Sunday di index 0, jadi kita geser.
+  static List<String> get dayNames {
+    final List<String> w = DateFormat.EEEE(locale).dateSymbols.WEEKDAYS;
+    return <String>[...w.sublist(1), w[0]];
+  }
 
   static String formatFullDate(DateTime date) {
-    final dayName = dayNames[date.weekday - 1];
-    final monthName = monthNames[date.month - 1];
-    return '$dayName, ${date.day} $monthName ${date.year}';
+    return DateFormat('EEEE, d MMMM y', locale).format(date);
   }
 
   static String formatShortDate(DateTime date) {
-    final monthName = shortMonthNames[date.month - 1];
-    return '${date.day} $monthName ${date.year}';
+    return DateFormat('d MMM y', locale).format(date);
   }
 
   static String formatMonthYear(DateTime date) {
-    return '${monthNames[date.month - 1]} ${date.year}';
+    return DateFormat('MMMM y', locale).format(date);
   }
 
   static String formatGroupHeader(DateTime date) {
@@ -61,11 +56,11 @@ class DateHelper {
     final target = DateTime(date.year, date.month, date.day);
 
     if (target == today) {
-      return 'Hari ini - ${formatShortDate(date)}';
+      return '$todayLabel - ${formatShortDate(date)}';
     } else if (target == yesterday) {
-      return 'Kemarin - ${formatShortDate(date)}';
+      return '$yesterdayLabel - ${formatShortDate(date)}';
     } else {
-      final dayName = dayNames[date.weekday - 1];
+      final dayName = DateFormat('EEEE', locale).format(date);
       return '$dayName, ${formatShortDate(date)}';
     }
   }

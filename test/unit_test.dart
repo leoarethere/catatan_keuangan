@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_project/models/category.dart';
-import 'package:flutter_project/models/transaction.dart';
-import 'package:flutter_project/providers/finance_provider.dart';
-import 'package:flutter_project/utils/currency_helper.dart';
-import 'package:flutter_project/utils/date_helper.dart';
+import 'package:catat_keuangan/models/category.dart';
+import 'package:catat_keuangan/models/transaction.dart';
+import 'package:catat_keuangan/providers/finance_provider.dart';
+import 'package:catat_keuangan/utils/currency_helper.dart';
+import 'package:catat_keuangan/utils/date_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +28,11 @@ void main() {
   });
 
   group('DateHelper Tests', () {
-    test('Format month year returns correct month name', () {
+    setUpAll(() async {
+      await DateHelper.ensureInitialized();
+    });
+
+    test('Format month year returns correct month name', () async {
       final date = DateTime(2026, 9, 29);
       final result = DateHelper.formatMonthYear(date);
       expect(result, 'September 2026');

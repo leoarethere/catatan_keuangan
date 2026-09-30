@@ -3,15 +3,45 @@ import 'package:flutter/material.dart';
 enum TransactionType {
   income,
   expense;
+}
 
-  String get label {
-    switch (this) {
-      case TransactionType.income:
-        return 'Pemasukan';
-      case TransactionType.expense:
-        return 'Pengeluaran';
-    }
-  }
+/// Jenis error operasi kategori.
+/// Dipakai agar pesan error bisa diterjemahkan oleh UI (l10n),
+/// bukan di-hardcode dalam bahasa tertentu di lapisan provider.
+enum CategoryError {
+  /// Kategori bawaan tidak bisa dihapus.
+  defaultCategoryCannotDelete,
+
+  /// Kategori bawaan tidak bisa diubah.
+  defaultCategoryCannotEdit,
+
+  /// Masih dipakai oleh transaksi (lihat [CategoryException.usageCount]).
+  inUse,
+
+  /// Kategori tidak ditemukan.
+  notFound,
+}
+
+/// Exception ber-tipe untuk operasi kategori.
+class CategoryException implements Exception {
+  final CategoryError error;
+  final int usageCount;
+
+  const CategoryException(this.error, {this.usageCount = 0});
+
+  @override
+  String toString() => 'CategoryException(${error.name}, usage: $usageCount)';
+}
+
+/// Hasil pengecekan apakah sebuah kategori boleh dihapus.
+class CategoryDeleteCheck {
+  /// `null` berarti boleh dihapus.
+  final CategoryError? error;
+  final int usageCount;
+
+  const CategoryDeleteCheck({this.error, this.usageCount = 0});
+
+  bool get canDelete => error == null;
 }
 
 class TransactionCategory {
@@ -20,6 +50,7 @@ class TransactionCategory {
   final IconData icon;
   final Color color;
   final TransactionType type;
+  final bool isCustom;
 
   const TransactionCategory({
     required this.id,
@@ -27,20 +58,60 @@ class TransactionCategory {
     required this.icon,
     required this.color,
     required this.type,
+    this.isCustom = false,
   });
+
+  TransactionCategory copyWith({
+    String? id,
+    String? name,
+    IconData? icon,
+    Color? color,
+    TransactionType? type,
+    bool? isCustom,
+  }) {
+    return TransactionCategory(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      color: color ?? this.color,
+      type: type ?? this.type,
+      isCustom: isCustom ?? this.isCustom,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'type': type.name,
+      'iconCodePoint': icon.codePoint,
+      'iconFontFamily': icon.fontFamily,
+      'colorValue': color.toARGB32(),
+      'isCustom': isCustom,
     };
   }
 
   factory TransactionCategory.fromJson(Map<String, dynamic> json) {
-    final id = json['id'] as String;
-    return getById(id);
+    final iconCodePoint = json['iconCodePoint'] as int;
+    final iconFontFamily = json['iconFontFamily'] as String?;
+    final colorValue = json['colorValue'] as int;
+
+    // Create icon separately to avoid const inference issue
+    // ignore: non_const_argument_for_const_parameter
+    final icon = const IconData(iconCodePoint, fontFamily: iconFontFamily);
+    final color = Color(colorValue);
+
+    return TransactionCategory(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      icon: icon,
+      color: color,
+      type: TransactionType.values.byName(json['type'] as String),
+      isCustom: json['isCustom'] as bool? ?? false,
+    );
   }
+
+  // ==================== KATEGORI DEFAULT ====================
 
   // Kategori default pengeluaran
   static const List<TransactionCategory> defaultExpenseCategories = [
@@ -155,15 +226,41 @@ class TransactionCategory {
     ),
   ];
 
-  static List<TransactionCategory> get allCategories => [
-    ...defaultExpenseCategories,
-    ...defaultIncomeCategories,
-  ];
+  static List<TransactionCategory> get allDefaultCategories => [
+        ...defaultExpenseCategories,
+        ...defaultIncomeCategories,
+      ];
 
-  static TransactionCategory getById(String id) {
-    return allCategories.firstWhere(
-      (c) => c.id == id,
-      orElse: () => defaultExpenseCategories.last,
-    );
+  /// Ambil kategori by ID dari daftar yang diberikan
+  /// (fallback ke default jika tidak ditemukan)
+  static TransactionCategory getById(String id,
+      {List<TransactionCategory>? customCategories}) {
+    // Cek custom categories dulu
+    if (customCategories != null) {
+      for (final c in customCategories) {
+        if (c.id == id) return c;
+      }
+    }
+
+    // Cek default
+    for (final c in allDefaultCategories) {
+      if (c.id == id) return c;
+    }
+
+    // Fallback ke "Lainnya"
+    return defaultExpenseCategories.last;
+  }
+
+  /// Validasi ID: hanya kategori default atau custom yang valid
+  static bool isValidId(String id, {List<TransactionCategory>? customCategories}) {
+    if (customCategories != null) {
+      for (final c in customCategories) {
+        if (c.id == id) return true;
+      }
+    }
+    for (final c in allDefaultCategories) {
+      if (c.id == id) return true;
+    }
+    return false;
   }
 }

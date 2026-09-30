@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../l10n/category_l10n.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../models/category.dart';
 import '../../models/transaction.dart';
 import '../../utils/currency_helper.dart';
@@ -18,6 +20,7 @@ class TransactionItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isExpense = transaction.type == TransactionType.expense;
@@ -43,14 +46,14 @@ class TransactionItemTile extends StatelessWidget {
         return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Hapus Catatan?'),
+            title: Text(l10n.deleteRecordTitle),
             content: Text(
-              'Apakah Anda yakin ingin menghapus catatan "${transaction.title}"?',
+              l10n.deleteTransactionConfirm(transaction.title),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Batal'),
+                child: Text(l10n.cancel),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -58,7 +61,7 @@ class TransactionItemTile extends StatelessWidget {
                   foregroundColor: colorScheme.onError,
                 ),
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Hapus'),
+                child: Text(l10n.delete),
               ),
             ],
           ),
@@ -116,7 +119,7 @@ class TransactionItemTile extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              transaction.category.name,
+                              transaction.category.localized(context),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
                               ),

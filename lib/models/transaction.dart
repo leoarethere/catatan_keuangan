@@ -3,7 +3,7 @@ import 'category.dart';
 class Transaction {
   final String id;
   final String title;
-  final double amount;
+  final int amount; // Disimpan sebagai int karena Rupiah tanpa desimal
   final TransactionType type;
   final TransactionCategory category;
   final DateTime date;
@@ -22,11 +22,12 @@ class Transaction {
   Transaction copyWith({
     String? id,
     String? title,
-    double? amount,
+    int? amount,
     TransactionType? type,
     TransactionCategory? category,
     DateTime? date,
     String? note,
+    bool clearNote = false, // Flag eksplisit untuk mengosongkan note
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -35,7 +36,7 @@ class Transaction {
       type: type ?? this.type,
       category: category ?? this.category,
       date: date ?? this.date,
-      note: note ?? this.note,
+      note: clearNote ? null : (note ?? this.note),
     );
   }
 
@@ -53,10 +54,22 @@ class Transaction {
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     final catId = json['categoryId'] as String? ?? 'exp_other';
+    
+    // Handle amount: bisa int atau double (backward compatibility)
+    final rawAmount = json['amount'];
+    int amount;
+    if (rawAmount is int) {
+      amount = rawAmount;
+    } else if (rawAmount is double) {
+      amount = rawAmount.round();
+    } else {
+      throw FormatException('Invalid amount type: ${rawAmount.runtimeType}');
+    }
+    
     return Transaction(
       id: json['id'] as String,
       title: json['title'] as String,
-      amount: (json['amount'] as num).toDouble(),
+      amount: amount,
       type: TransactionType.values.byName(json['type'] as String),
       category: TransactionCategory.getById(catId),
       date: DateTime.parse(json['date'] as String),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../l10n/category_l10n.dart';
+import '../l10n/generated/app_localizations.dart';
 import '../models/category.dart';
 import '../models/transaction.dart';
 import '../providers/finance_provider.dart';
@@ -104,10 +106,11 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = double.tryParse(_amountController.text.replaceAll('.', '')) ?? 0.0;
+    final l10n = AppLocalizations.of(context)!;
+    final amount = int.tryParse(_amountController.text.replaceAll('.', '')) ?? 0;
     if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nominal harus lebih dari 0')),
+        SnackBar(content: Text(l10n.amountMustBePositive)),
       );
       return;
     }
@@ -133,39 +136,39 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final currentCategories = _selectedType == TransactionType.expense
-        ? TransactionCategory.defaultExpenseCategories
-        : TransactionCategory.defaultIncomeCategories;
+    // Gunakan kategori dinamis dari provider (default + custom)
+    final currentCategories = widget.provider.getCategoriesByType(_selectedType);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isEditing ? 'Ubah Catatan' : 'Tambah Catatan Baru'),
+        title: Text(isEditing ? l10n.editRecordTitle : l10n.addRecordTitle),
         centerTitle: true,
         actions: [
           if (isEditing)
             IconButton(
               icon: const Icon(Icons.delete_outline_rounded),
-              tooltip: 'Hapus Catatan',
+              tooltip: l10n.deleteRecordAction,
               onPressed: () async {
                 final navigator = Navigator.of(context);
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (ctx) => AlertDialog(
-                    title: const Text('Hapus Catatan?'),
-                    content: const Text('Catatan ini akan dihapus secara permanen.'),
+                    title: Text(l10n.deleteRecordTitle),
+                    content: Text(l10n.deleteRecordMessage),
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Batal'),
+                        child: Text(l10n.cancel),
                       ),
                       FilledButton(
                         style: FilledButton.styleFrom(
                           backgroundColor: colorScheme.error,
                         ),
                         onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Hapus'),
+                        child: Text(l10n.delete),
                       ),
                     ],
                   ),
@@ -188,16 +191,16 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
             children: [
               // Segmented Button Tipe Transaksi
               SegmentedButton<TransactionType>(
-                segments: const [
-                  ButtonSegment<TransactionType>(
-                    value: TransactionType.expense,
-                    label: Text('Pengeluaran'),
-                    icon: Icon(Icons.arrow_upward_rounded),
-                  ),
+                segments: [
                   ButtonSegment<TransactionType>(
                     value: TransactionType.income,
-                    label: Text('Pemasukan'),
-                    icon: Icon(Icons.arrow_downward_rounded),
+                    label: Text(l10n.income),
+                    icon: const Icon(Icons.arrow_downward_rounded),
+                  ),
+                  ButtonSegment<TransactionType>(
+                    value: TransactionType.expense,
+                    label: Text(l10n.expense),
+                    icon: const Icon(Icons.arrow_upward_rounded),
                   ),
                 ],
                 selected: {_selectedType},
@@ -215,7 +218,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
               // Input Nominal
               Text(
-                'Nominal',
+                l10n.amountLabel,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurfaceVariant,
@@ -253,7 +256,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
-                    return 'Masukkan nominal transaksi';
+                    return l10n.amountRequired;
                   }
                   return null;
                 },
@@ -262,7 +265,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
               // Input Judul
               Text(
-                'Judul Transaksi',
+                l10n.transactionTitleLabel,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurfaceVariant,
@@ -273,7 +276,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 controller: _titleController,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Misal: Makan Siang, Gaji Kantor, dll.',
+                  hintText: l10n.transactionTitleHint,
                   prefixIcon: const Icon(Icons.edit_note_rounded),
                   filled: true,
                   fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
@@ -284,7 +287,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 ),
                 validator: (val) {
                   if (val == null || val.trim().isEmpty) {
-                    return 'Judul transaksi wajib diisi';
+                    return l10n.transactionTitleRequired;
                   }
                   return null;
                 },
@@ -293,7 +296,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
               // Pilih Kategori
               Text(
-                'Kategori',
+                l10n.categoryLabel,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurfaceVariant,
@@ -311,7 +314,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                       size: 18,
                       color: isSelected ? colorScheme.onPrimary : cat.color,
                     ),
-                    label: Text(cat.name),
+                    label: Text(cat.localized(context)),
                     selected: isSelected,
                     selectedColor: colorScheme.primary,
                     labelStyle: TextStyle(
@@ -333,7 +336,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
               // Pemilih Tanggal
               Text(
-                'Tanggal',
+                l10n.dateLabel,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurfaceVariant,
@@ -373,7 +376,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
 
               // Input Catatan Tambahan (Opsional)
               Text(
-                'Catatan Tambahan (Opsional)',
+                l10n.noteOptionalLabel,
                 style: theme.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: colorScheme.onSurfaceVariant,
@@ -385,7 +388,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
                 maxLines: 2,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
-                  hintText: 'Keterangan atau rincian tambahan...',
+                  hintText: l10n.noteHint,
                   prefixIcon: const Icon(Icons.notes_rounded),
                   filled: true,
                   fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
@@ -401,7 +404,7 @@ class _AddEditTransactionScreenState extends State<AddEditTransactionScreen> {
               FilledButton.icon(
                 onPressed: _save,
                 icon: const Icon(Icons.check_rounded),
-                label: Text(isEditing ? 'Perbarui Catatan' : 'Simpan Transaksi'),
+                label: Text(isEditing ? l10n.updateRecord : l10n.saveTransaction),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
